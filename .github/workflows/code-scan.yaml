@@ -38,7 +38,7 @@ jobs:
           name: trivy-vuln-results
           path: "${{ github.workspace }}/trivy-results-*"
           retention-days: 7
-      
+
       - name: Upload deps list
         uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         if: always()
@@ -46,7 +46,7 @@ jobs:
           name: python-deps-list
           path: "${{ github.workspace }}/requirements.txt"
           retention-days: 7
-  
+
   Bandit:
     runs-on: ubuntu-24.04
     steps:
@@ -60,8 +60,8 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          pip install bandit[toml]     
-      
+          pip install bandit[toml]
+
       - name: Bandit Scanning
         run: bandit -r . -o bandit-results.txt -c pyproject.toml
 
