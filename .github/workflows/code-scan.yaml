@@ -1,0 +1,66 @@
+name: Code scan
+
+on:
+  workflow_dispatch: # run on request (no need for PR)
+  push:
+    branches:
+      - "main"
+
+permissions: {}
+
+jobs:
+  Trivy-Scan-Vuln:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.10"
+#      - name: Install dependencies
+#        run: python -m pip install --require-hashes --no-deps -r .ci/requirements.txt
+      - name: Freeze dependencies
+        run: pip-compile --extra=core,openvino,loggers,notebooks, vlm -o requirements.txt pyproject.toml
+      - name: Run Trivy Scan (vuln)
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0 # v0.29.0
+        with:
+          scan-type: fs
+          format: "sarif"
+          scan-ref: requirements.txt
+          scanners: vuln
+          output: trivy-results-vuln.sarif
+
+      - name: Upload Trivy results artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: trivy-vuln-results
+          path: "${{ github.workspace }}/trivy-results-*"
+          retention-days: 7
+
+  Bandit:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.10"
+      - name: Install Bandit
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit[toml]     
+      
+      - name: Bandit Scanning
+        run: bandit -r . -o bandit-results.txt
+
+      - name: Upload Bandit artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: bandit-results
+          path: bandit-results.txt
+          retention-days: 7
