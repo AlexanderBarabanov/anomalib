@@ -149,6 +149,10 @@ runs:
           --severity $SEMGREP_SEVERITY \
           --timeout ${{ inputs.timeout }} \
           --${{ inputs.output-format }} \
+          --config="p/trailofbits" \
+          --config="p/default" \
+          --config="p/cwe-top-25" \
+          --config="p/owasp-top-ten" \
           -o "${REPORT_FILE}" \
           ${FILES}
         exit_code="$?"
