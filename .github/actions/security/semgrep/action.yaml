@@ -131,7 +131,6 @@ runs:
           echo "Running Semgrep on changed files, output results into workflow log only"
           FILES="${{ steps.changed-files.outputs.all_changed_files }}"
         semgrep \
-          --verbose \
           ${SEMGREP_SEVERITY} \
           --timeout ${{ inputs.timeout }} \
           ${FILES}
@@ -142,7 +141,6 @@ runs:
           echo "Running Semgrep on all files in ${{ inputs.paths }}"
           FILES="${{ inputs.paths }}"
         semgrep \
-          --verbose \
           ${SEMGREP_SEVERITY} \
           --timeout ${{ inputs.timeout }} \
           --${{ inputs.output-format }} \
