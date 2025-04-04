@@ -88,7 +88,6 @@ outputs:
 runs:
   using: composite
   steps:
-
     - name: Get changed files
       if: inputs.scan-scope == 'changed'
       id: changed-files
