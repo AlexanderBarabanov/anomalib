@@ -106,18 +106,19 @@ runs:
       run: |
         set +e
         # Map standard severity levels to Semgrep's levels
+        # Semgrep does not support hierarchy, levels must be set explicitly
         case "${{ inputs.severity }}" in
           "LOW")
-            SEMGREP_SEVERITY="INFO"
+            SEMGREP_SEVERITY="--severity INFO --severity WARNING --severity ERROR"
             ;;
           "MEDIUM")
-            SEMGREP_SEVERITY="WARNING"
+            SEMGREP_SEVERITY="--severity WARNING --severity ERROR"
             ;;
           "HIGH"|"CRITICAL")
-            SEMGREP_SEVERITY="ERROR"
+            SEMGREP_SEVERITY="--severity ERROR"
             ;;
           *)
-            SEMGREP_SEVERITY="WARNING"
+            SEMGREP_SEVERITY="--severity WARNING --severity ERROR"
             ;;
         esac
 
@@ -131,7 +132,7 @@ runs:
           FILES="${{ steps.changed-files.outputs.all_changed_files }}"
         semgrep \
           --verbose \
-          --severity $SEMGREP_SEVERITY \
+          "${SEMGREP_SEVERITY}" \
           --timeout ${{ inputs.timeout }} \
           ${FILES}
         exit_code="$?"
@@ -142,6 +143,7 @@ runs:
           FILES="${{ inputs.paths }}"
         semgrep \
           --verbose \
+          "${SEMGREP_SEVERITY}" \
           --timeout ${{ inputs.timeout }} \
           --${{ inputs.output-format }} \
           -o "${REPORT_FILE}" \
