@@ -146,7 +146,8 @@ runs:
           -o "${REPORT_FILE}" \
           ${FILES}
         exit_code="$?"
-        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT  
+        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+        echo "Exit code is $exit_code"
         echo "report_path=${REPORT_FILE}" >> $GITHUB_OUTPUT
         fi
 
