@@ -141,6 +141,7 @@ runs:
           FILES="${{ inputs.paths }}"
         semgrep \
           ${SEMGREP_SEVERITY} \
+          --error \
           --timeout ${{ inputs.timeout }} \
           --${{ inputs.output-format }} \
           -o "${REPORT_FILE}" \
