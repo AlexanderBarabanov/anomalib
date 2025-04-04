@@ -131,6 +131,7 @@ runs:
           FILES="${{ steps.changed-files.outputs.all_changed_files }}"
         semgrep \
           ${SEMGREP_SEVERITY} \
+          --error \
           --timeout ${{ inputs.timeout }} \
           ${FILES}
         exit_code="$?"
