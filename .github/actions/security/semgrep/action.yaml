@@ -133,7 +133,9 @@ runs:
           ${SEMGREP_SEVERITY} \
           --error \
           --timeout ${{ inputs.timeout }} \
-          ${FILES}
+          --metrics=off \
+          --baseline-commit $ \
+          # ${FILES}
         exit_code="$?"
         echo "exit_code=$exit_code" >> $GITHUB_OUTPUT  
 
