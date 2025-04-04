@@ -53,7 +53,7 @@ _MODELS = {
 
 
 def _verify_checksum(file_path: str, url: str) -> bool:
-    expected_sha256 = url.split("/")[-2]
+    expected_sha256 = url.split("/")[-3]
     sha256_hash = hashlib.sha256()
 
     with open(file_path, "rb") as file:
