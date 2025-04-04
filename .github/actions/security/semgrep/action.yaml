@@ -107,6 +107,7 @@ runs:
       # Set the SEMGREP_RULES environment variable to specify which rules Semgrep should use.
       env:
           SEMGREP_RULES: > 
+            p/default
             p/cwe-top-25
             p/owasp-top-ten
             p/trailofbits
