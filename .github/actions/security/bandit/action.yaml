@@ -114,7 +114,7 @@ runs:
       run: |
         set +e
         REPORT_FILE="bandit-report.${{ inputs.output-format }}"
-        
+
         # Convert severity and confidence to lowercase
         SEVERITY=$(echo "${{ inputs.severity-level }}" | tr '[:upper:]' '[:lower:]')
         CONFIDENCE=$(echo "${{ inputs.confidence-level }}" | tr '[:upper:]' '[:lower:]')
@@ -145,7 +145,7 @@ runs:
           echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           echo "report_path=${REPORT_FILE}" >> $GITHUB_OUTPUT
         fi
-        
+
         if [[ "${{ inputs.fail-on-findings }}" == "true" && -n "$exit_code" && "$exit_code" != "0" ]]; then
           exit $exit_code
         fi

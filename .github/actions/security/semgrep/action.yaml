@@ -136,7 +136,7 @@ runs:
           --metrics=off \
           ${FILES}
         exit_code="$?"
-        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT  
+        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
 
         else
           echo "Running Semgrep on all files in ${{ inputs.paths }}"

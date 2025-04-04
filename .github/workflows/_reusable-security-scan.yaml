@@ -86,7 +86,7 @@ jobs:
         if: hashFiles('bandit-report.sarif') != '' # if SARIF is available, upload it
         with:
           sarif_file: bandit-report.sarif
-  
+
   semgrep:
     if: contains(inputs.tools, 'semgrep')
     runs-on: ubuntu-latest
