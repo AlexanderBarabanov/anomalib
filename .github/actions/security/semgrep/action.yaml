@@ -134,8 +134,8 @@ runs:
           --error \
           --timeout ${{ inputs.timeout }} \
           --metrics=off \
-          --baseline-commit HEAD~ \
-          # ${FILES}
+          --baseline-commit HEAD \
+           ${FILES}
         exit_code="$?"
         echo "exit_code=$exit_code" >> $GITHUB_OUTPUT  
 
