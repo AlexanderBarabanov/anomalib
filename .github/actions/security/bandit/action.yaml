@@ -128,7 +128,8 @@ runs:
             --severity-level ${SEVERITY} \
             --confidence-level ${CONFIDENCE} \
             -r ${FILES}
-            echo "exit_code=$?" >> $GITHUB_OUTPUT
+          exit_code="$?"
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
 
         else
           echo "Running Bandit on all files in ${{ inputs.paths }}"
@@ -140,7 +141,8 @@ runs:
             -f ${{ inputs.output-format }} \
             -o "${REPORT_FILE}" \
             -r ${FILES}
-            echo "exit_code=$?" >> $GITHUB_OUTPUT
+          exit_code="$?"
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
           echo "report_path=${REPORT_FILE}" >> $GITHUB_OUTPUT
         fi
 

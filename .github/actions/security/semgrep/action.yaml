@@ -135,7 +135,8 @@ runs:
           --timeout ${{ inputs.timeout }} \
           --metrics=off \
           ${FILES}
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
+        exit_code="$?"
+        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
 
         else
           echo "Running Semgrep on all files in ${{ inputs.paths }}"
@@ -148,7 +149,8 @@ runs:
           --${{ inputs.output-format }} \
           -o "${REPORT_FILE}" \
           ${FILES}
-        echo "exit_code=$?" >> $GITHUB_OUTPUT
+        exit_code="$?"
+        echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
         echo "report_path=${REPORT_FILE}" >> $GITHUB_OUTPUT
         fi
 
