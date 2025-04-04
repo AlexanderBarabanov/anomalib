@@ -88,10 +88,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
 
     - name: Get changed files
       if: inputs.scan-scope == 'changed'
