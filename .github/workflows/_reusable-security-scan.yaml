@@ -90,6 +90,8 @@ jobs:
   semgrep:
     if: contains(inputs.tools, 'semgrep')
     runs-on: ubuntu-latest
+    container:
+      image: returntocorp/semgrep
     steps:
       - uses: actions/checkout@v4
       - name: Run Semgrep scan
