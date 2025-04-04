@@ -132,7 +132,7 @@ runs:
           FILES="${{ steps.changed-files.outputs.all_changed_files }}"
         semgrep \
           --verbose \
-          "${SEMGREP_SEVERITY}" \
+          ${SEMGREP_SEVERITY} \
           --timeout ${{ inputs.timeout }} \
           ${FILES}
         exit_code="$?"
@@ -143,7 +143,7 @@ runs:
           FILES="${{ inputs.paths }}"
         semgrep \
           --verbose \
-          "${SEMGREP_SEVERITY}" \
+          ${SEMGREP_SEVERITY} \
           --timeout ${{ inputs.timeout }} \
           --${{ inputs.output-format }} \
           -o "${REPORT_FILE}" \
