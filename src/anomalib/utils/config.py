@@ -60,8 +60,8 @@ def _convert_nested_path_to_str(config: Any) -> Any:  # noqa: ANN401
         for i, item in enumerate(config):
             config[i] = _convert_nested_path_to_str(item)
     elif isinstance(config, Path | JSONArgparsePath):
-        config = str(config)
-    return config
+        config_test = str(config)
+    return config_test
 
 
 def to_nested_dict(config: dict) -> dict:
