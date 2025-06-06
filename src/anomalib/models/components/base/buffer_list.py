@@ -60,7 +60,7 @@ class BufferListMixin(nn.Module):
         self,
         name: str,
         values: list[torch.Tensor],
-        persistent: bool = True,
+        persistent: bool = False,
         **kwargs,
     ) -> None:
         """Register a list of tensors as buffers in a PyTorch module.

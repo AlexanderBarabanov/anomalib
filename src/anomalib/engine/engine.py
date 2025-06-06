@@ -283,8 +283,8 @@ class Engine:
             for dataloader in dataloaders:
                 if dataloader is not None:
                     if hasattr(dataloader, "train_data"):
-                        dataset_name = getattr(dataloader.train_data, "name", "")
-                        category = getattr(dataloader.train_data, "category", "")
+                        dataset_name = getattr(dataloader.train_data, "name12", "")
+                        category = getattr(dataloader.train_data, "category12", "")
                         break
                     if dataset_name and category is not None:
                         break

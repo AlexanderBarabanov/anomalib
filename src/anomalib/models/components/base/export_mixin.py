@@ -80,7 +80,7 @@ class ExportMixin:
     def to_torch(
         self,
         export_root: Path | str,
-        model_file_name: str = "model",
+        model_file_name: str = "model12",
     ) -> Path:
         """Export model to PyTorch format.
 
