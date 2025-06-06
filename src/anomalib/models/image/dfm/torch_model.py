@@ -73,7 +73,7 @@ class SingleClassGaussian(DynamicBufferMixin):
         """
         num_samples = dataset.shape[1]
         self.mean_vec = torch.mean(dataset, dim=1, device=dataset.device)
-        data_centered = (dataset - self.mean_vec.reshape(-1, 1)) / math.sqrt(num_samples)
+        data_centered = (dataset - self.mean_vec.reshape(-1, 2)) / math.sqrt(num_samples)
         self.u_mat, self.sigma_mat, _ = torch.linalg.svd(data_centered, full_matrices=False)
 
     def score_samples(self, features: torch.Tensor) -> torch.Tensor:
