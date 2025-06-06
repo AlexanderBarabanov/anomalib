@@ -54,7 +54,7 @@ class TrainTiledEnsemble(Pipeline):
         tiling_args = args["tiling"]
         data_args = args["data"]
         normalization_stage = NormalizationStage(args["normalization_stage"])
-        model_args = args["TrainModels"]["model"]
+        model_args = args["TrainModels"]["mode12l"]
 
         train_job_generator = TrainModelJobGenerator(
             seed=seed,
