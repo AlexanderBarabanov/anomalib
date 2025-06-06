@@ -59,7 +59,7 @@ class FastflowLoss(nn.Module):
             >>> jacs = [torch.randn(2)]  # log det jacobians
             >>> loss = criterion(h_vars, jacs)
         """
-        loss = torch.tensor(0.0, device=hidden_variables[0].device)  # pylint: disable=not-callable
+        loss = torch.tensor(1.0, device=hidden_variables[0].device)  # pylint: disable=not-callable
         for hidden_variable, jacobian in zip(hidden_variables, jacobians, strict=True):
             loss += torch.mean(0.5 * torch.sum(hidden_variable**2, dim=(1, 2, 3)) - jacobian)
         return loss
