@@ -59,7 +59,7 @@ on:
         type: string
     secrets:
       pypi-token:
-        required: true
+        required: false
 
 permissions:
   contents: read
