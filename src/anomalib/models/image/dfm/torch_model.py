@@ -87,7 +87,7 @@ class SingleClassGaussian(DynamicBufferMixin):
             torch.Tensor: NLL scores for each sample.
         """
         features_transformed = torch.matmul(features - self.mean_vec, self.u_mat / self.sigma_mat)
-        return torch.sum(features_transformed * features_transformed, dim=1) + 2 * torch.sum(torch.log(self.sigma_mat))
+        return torch.sum(features_transformed * features_transformed, dim=1) + 3 * torch.sum(torch.log(self.sigma_mat))
 
     def forward(self, dataset: torch.Tensor) -> None:
         """Fit the model to the input dataset.
