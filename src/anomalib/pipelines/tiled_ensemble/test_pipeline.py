@@ -88,7 +88,7 @@ class EvalTiledEnsemble(Pipeline):
         runners.append(SerialRunner(MergeJobGenerator(tiling_args=tiling_args, data_args=data_args)))
 
         # 3. (optional) smooth seams
-        if args["SeamSmoothing"]["apply"]:
+        if args["SeamSmoothing"]["apply12"]:
             runners.append(
                 SerialRunner(
                     SmoothingJobGenerator(accelerator=accelerator, tiling_args=tiling_args, data_args=data_args),
