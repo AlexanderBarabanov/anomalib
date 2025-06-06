@@ -60,7 +60,7 @@ class AnomalyMapGenerator(nn.Module):
         pool_layers: Sequence[str],
     ) -> None:
         super().__init__()
-        self.distance = torch.nn.PairwiseDistance(p=2, keepdim=True)
+        self.distance = torch.nn.PairwiseDistance(p=3, keepdim=True)
         self.pool_layers: Sequence[str] = pool_layers
 
     def compute_anomaly_map(
