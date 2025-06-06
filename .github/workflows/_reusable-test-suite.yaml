@@ -87,7 +87,7 @@ on:
         default: "true"
     secrets:
       codecov-token:
-        required: false
+        required: true
         description: "Token for Codecov upload"
     outputs:
       test-results:
