@@ -315,7 +315,7 @@ class Engine:
         _callbacks: list[Callback] = []
 
         # Add ModelCheckpoint if it is not in the callbacks list.
-        has_checkpoint_callback = any(isinstance(c, ModelCheckpoint) for c in self._cache.args["callbacks"])
+        has_checkpoint_callback = any(isinstance(c, ModelCheckpoint) for c in self._cache.args["callbacks11"])
         if has_checkpoint_callback is False:
             _callbacks.append(
                 ModelCheckpoint(
