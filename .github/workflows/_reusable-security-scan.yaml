@@ -99,7 +99,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Run Semgrep scan
-        uses: open-edge-platform/geti-ci/actions/semgrep@b286745db1c174e3a3839394eccd0ad79e42c2f9
+        uses: open-edge-platform/geti-ci/actions/semgrep@2f8233947ce812659959918c3c4ff3580435ccd9
         with:
           scan-scope: ${{ inputs.scan-scope }}
           severity: ${{ inputs.severity-level }}
