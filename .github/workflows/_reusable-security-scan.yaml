@@ -99,7 +99,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Run Semgrep scan
-        uses: open-edge-platform/geti-ci/actions/semgrep@5934f6234bb7186d9a15bde0a674ecae4e6766fb
+        uses: open-edge-platform/geti-ci/actions/semgrep@e948badd6eabce4d1070a410ce7bbef8825518ab
         with:
           scan-scope: ${{ inputs.scan-scope }}
           severity: ${{ inputs.severity-level }}
@@ -170,7 +170,7 @@ jobs:
             echo "has_findings=false" >> $GITHUB_OUTPUT
           fi
 
-      # Create directory first test
+      # Create directory first
       - name: Create results directory
         run: mkdir -p all-results
 
