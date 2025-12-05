@@ -185,6 +185,7 @@ class DinoV2Loader:
 
         # Weights_only is set to True
         # See mitigation details in https://github.com/open-edge-platform/anomalib/pull/2729
+        # nosemgrep
         state_dict = torch.load(weight_path, map_location="cpu", weights_only=True)  # nosec B614
         model.load_state_dict(state_dict, strict=False)
 
@@ -236,6 +237,7 @@ class DinoV2Loader:
             miniters=1,
             desc=download_info.name,
         ) as progress_bar:
+            # nosemgrep
             urlretrieve(  # noqa: S310  # nosec B310
                 url=url,
                 filename=weight_path,
