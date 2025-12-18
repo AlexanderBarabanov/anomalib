@@ -25,7 +25,7 @@ Example:
     >>> scores = estimator(features)  # Returns anomaly scores during inference
 
 The density estimators are used to model the distribution of normal behavior and
-detect anomalies as samples with low likelihood under the learned distributions.
+detect anomalies as samples with low likelihood under the learned distributions. TEST
 """
 
 from abc import ABC, abstractmethod
