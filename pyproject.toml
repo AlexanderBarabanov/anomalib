@@ -1,5 +1,6 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# SETUP CONFIGURATION.                                                        #
+# SETUP CONFIGURATION.
+# TEST
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
