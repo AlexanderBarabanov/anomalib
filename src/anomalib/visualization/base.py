@@ -26,7 +26,7 @@ The module ensures consistent visualization by:
 
 Note:
     All visualizer implementations should inherit from the base ``Visualizer``
-    class and implement the required visualization methods.
+    class and implement the required visualization methods. TEST
 """
 
 from lightning.pytorch import Callback
