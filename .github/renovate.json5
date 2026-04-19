@@ -23,7 +23,6 @@
   lockFileMaintenance: {
     enabled: true,
     schedule: ["* * * * 0"], // weekly on Sunday
-    automerge: true,
     automergeType: "pr",
     reviewers: ["sys-geti"],
     platformAutomerge: true,
