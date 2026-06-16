@@ -34,7 +34,7 @@ jobs:
         id: scan
         continue-on-error: true
         run: |
-          python scripts/skillspector_scan.py \
+          python tools/skillspector_scan.py \
             --all \
             --threshold 50 \
             --output-md skillspector-report.md \
