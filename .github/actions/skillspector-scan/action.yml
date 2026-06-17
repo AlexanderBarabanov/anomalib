@@ -85,31 +85,31 @@ runs:
             while IFS= read -r skill; do
               echo "Scanning: $skill" >&2
 
-              if RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1); then
-                SCORE=$(echo "$RESULT"     | jq -r '.risk_assessment.score    // 0'     2>/dev/null || echo "0")
-                SKILL_SEV=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
-                ISSUES=$(echo "$RESULT"    | jq    '.issues | length'                   2>/dev/null || echo "0")
-                SCORE=${SCORE%.*}
+              # Always capture output; ignore skillspector's own exit code
+              RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1) || true
 
-                echo "| $skill | $SCORE/100 | $SKILL_SEV | $ISSUES |"
-
-                # Write exceeded flag to temp file (subshell-safe)
-                case "$INPUTS_SEVERITY_LEVEL:$SKILL_SEV" in
-                  LOW:*)
-                    echo "true" > "$EXCEEDED_FILE" ;;
-                  MEDIUM:MEDIUM|MEDIUM:HIGH|MEDIUM:CRITICAL)
-                    echo "true" > "$EXCEEDED_FILE" ;;
-                  HIGH:HIGH|HIGH:CRITICAL)
-                    echo "true" > "$EXCEEDED_FILE" ;;
-                  CRITICAL:CRITICAL)
-                    echo "true" > "$EXCEEDED_FILE" ;;
-                esac
-              else
-                ERROR_MSG=$(echo "$RESULT" | head -1 | cut -c1-120)
-                echo "| $skill | ERROR | ⚠️ | $ERROR_MSG |"
-                echo "Full error for $skill:" >&2
+              # Validate we got parseable JSON
+              if ! echo "$RESULT" | jq -e . > /dev/null 2>&1; then
+                echo "| $skill | ERROR | — | failed to parse output |"
+                echo "Raw output for $skill:" >&2
                 echo "$RESULT" >&2
+                continue
               fi
+
+              SCORE=$(echo "$RESULT"     | jq -r '.risk_assessment.score    // 0'     2>/dev/null || echo "0")
+              SKILL_SEV=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
+              ISSUES=$(echo "$RESULT"    | jq    '.issues | length'                   2>/dev/null || echo "0")
+              SCORE=${SCORE%.*}
+
+              echo "| $skill | $SCORE/100 | $SKILL_SEV | $ISSUES |"
+
+              # Compare extracted severity against threshold
+              case "$INPUTS_SEVERITY_LEVEL:$SKILL_SEV" in
+                LOW:*)                                      echo "true" > "$EXCEEDED_FILE" ;;
+                MEDIUM:MEDIUM|MEDIUM:HIGH|MEDIUM:CRITICAL)  echo "true" > "$EXCEEDED_FILE" ;;
+                HIGH:HIGH|HIGH:CRITICAL)                    echo "true" > "$EXCEEDED_FILE" ;;
+                CRITICAL:CRITICAL)                          echo "true" > "$EXCEEDED_FILE" ;;
+              esac
             done <<< "$SKILLS"
           fi
 
