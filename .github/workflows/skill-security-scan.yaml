@@ -33,9 +33,7 @@ jobs:
 
       - name: Run SkillSpector on all skills
         run: |
-          skillspector scan .agents/skills 
-            --no-llm --verbose --format markdown --output skillspector-report.md
-
+          skillspector scan .agents/skills --no-llm --verbose --format markdown --output skillspector-report.md
       - name: Display report
         if: always()
         run: |
