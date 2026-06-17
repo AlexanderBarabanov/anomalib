@@ -40,4 +40,5 @@ jobs:
       - name: Run SkillSpector scan
         uses: ./.github/actions/skillspector-scan
         with:
-          severity-level: ${{ inputs.severity || 'CRITICAL' }}
+          severity-level: ${{ github.event_name == 'pull_request' && (inputs.severity || 'CRITICAL') || 'LOW' }}
+          fail-on-findings: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
