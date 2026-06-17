@@ -6,7 +6,6 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
-       
 
 permissions: {} # No permissions by default on workflow level
 
@@ -25,39 +24,30 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
+      # SkillSpector is not published to PyPI and cuts no release tags, so we
+      # install from a pinned commit SHA
       - name: Install SkillSpector
-        run: pip install "git+https://github.com/NVIDIA/skillspector.git@main"
+        run: python -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@a5092dd9b9521ff57a9b53612bb129ce78019002"
 
       - name: Run SkillSpector on all skills
-        id: scan
-        continue-on-error: true
         run: |
-          python tools/skillspector_scan.py \
-            --all \
-            --threshold 50 \
-            --output-md skillspector-report.md \
-            --output-sarif skillspector.sarif
+          skillspector scan .agents/skills 
+            --no-llm --verbose --format markdown --output skillspector-report.md
 
-      - name: Publish summary
+      - name: Display report
         if: always()
-        run: cat skillspector-report.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload report artifacts
+        run: |
+          if [ -f skillspector-report.md ]; then
+            cat skillspector-report.md
+          else
+            echo "SkillSpector Markdown report was not generated."
+          fi
+      - name: Upload SkillSpector reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: skillspector-full-report
-          path: |
-            skillspector-report.md
-            skillspector.sarif
-          retention-days: 90
-
-      - name: Upload SARIF to code scanning
-        if: always()
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: skillspector.sarif
-          category: skillspector-full
+          name: skillspector-reports
+          path: skillspector-report.md
+          if-no-files-found: error
