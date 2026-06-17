@@ -81,8 +81,8 @@ jobs:
               while IFS= read -r skill; do
                 echo "Scanning: $skill" >&2
                 
-                # Run scan with timeout
-                if RESULT=$(timeout 10 skillspector scan "$skill" --no-llm --format json 2>&1); then
+                # Run scan
+                if RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1); then
                   SCORE=$(echo "$RESULT" | jq -r '.risk_assessment.score // 0' 2>/dev/null || echo "0")
                   SEVERITY=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
                   ISSUES=$(echo "$RESULT" | jq '.issues | length' 2>/dev/null || echo "0")
@@ -102,7 +102,7 @@ jobs:
                     EXIT_CODE=1
                   fi
                 else
-                  echo "| $skill | TIMEOUT | ⚠️ | — |"
+                  echo "| $skill | ERROR | ⚠️ | — |"
                 fi
               done <<< "$SKILLS"
             fi
