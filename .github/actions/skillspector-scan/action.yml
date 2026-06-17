@@ -64,7 +64,13 @@ runs:
 
         # Discover skills — changed only for PRs, all otherwise
         if [[ "$IS_PR" == "true" ]]; then
-          SKILLS=$(git diff --name-only "origin/${INPUTS_BASE_REF}" HEAD -- "${INPUTS_SKILLS_PATH}/" | cut -d/ -f1-3 | sort -u)
+          # Get changed paths, extract candidate dirs, then verify each contains SKILL.md
+          SKILLS=$(git diff --name-only "origin/${INPUTS_BASE_REF}" HEAD -- "${INPUTS_SKILLS_PATH}/" \
+            | awk -F/ 'NF>=3{print $1"/"$2"/"$3}' \
+            | sort -u \
+            | while IFS= read -r candidate; do
+                [[ -f "$candidate/SKILL.md" ]] && echo "$candidate"
+              done)
         else
           SKILLS=$(find "${INPUTS_SKILLS_PATH}" -mindepth 1 -maxdepth 2 -name SKILL.md -type f | sed "s|/SKILL.md||" | sort)
         fi
@@ -82,6 +88,12 @@ runs:
             echo "No skills to scan."
           else
             while IFS= read -r skill; do
+              # Skip if not a valid skill directory
+              if [[ ! -f "$skill/SKILL.md" ]]; then
+                echo "Skipping $skill — no SKILL.md found" >&2
+                continue
+              fi
+
               echo "Scanning: $skill" >&2
 
               # Always capture output; ignore skillspector's own exit code
@@ -117,21 +129,29 @@ runs:
                 CRITICAL:CRITICAL)
                   echo "true" > "$EXCEEDED_FILE"
                   while IFS= read -r issue; do
-                    ISSUE_SEV=$(echo "$issue"  | jq -r '.severity    // "LOW"' 2>/dev/null)
-                    ISSUE_ID=$(echo "$issue"   | jq -r '.id          // "?"'   2>/dev/null)
-                    CATEGORY=$(echo "$issue"   | jq -r '.category    // ""'    2>/dev/null)
-                    PATTERN=$(echo "$issue"    | jq -r '.pattern     // ""'    2>/dev/null)
-                    FINDING=$(echo "$issue"    | jq -r '.finding     // ""'    2>/dev/null)
-                    REMEDIATE=$(echo "$issue"  | jq -r '.remediation // ""'    2>/dev/null)
-                    FILE=$(echo "$issue"       | jq -r '.location.file       // "N/A"' 2>/dev/null)
-                    LINE=$(echo "$issue"       | jq -r '.location.start_line // ""'    2>/dev/null)
+                    ISSUE_SEV=$(echo "$issue"   | jq -r '.severity      // "LOW"' 2>/dev/null)
+                    ISSUE_ID=$(echo "$issue"    | jq -r '.id            // "?"'   2>/dev/null)
+                    CATEGORY=$(echo "$issue"    | jq -r '.category      // ""'    2>/dev/null)
+                    PATTERN=$(echo "$issue"     | jq -r '.pattern       // ""'    2>/dev/null)
+                    CONFIDENCE=$(echo "$issue"  | jq -r '.confidence    // ""'    2>/dev/null)
+                    FINDING=$(echo "$issue"     | jq -r '.finding       // ""'    2>/dev/null)
+                    EXPLAIN=$(echo "$issue"     | jq -r '.explanation   // ""'    2>/dev/null)
+                    REMEDIATE=$(echo "$issue"   | jq -r '.remediation   // ""'    2>/dev/null)
+                    SNIPPET=$(echo "$issue"     | jq -r '.code_snippet  // ""'    2>/dev/null)
+                    FILE=$(echo "$issue"        | jq -r '.location.file       // "N/A"' 2>/dev/null)
+                    LINE=$(echo "$issue"        | jq -r '.location.start_line // ""'    2>/dev/null)
                     LOC="$FILE"
                     [[ -n "$LINE" ]] && LOC="$LOC:$LINE"
                     echo "  [$ISSUE_ID] $CATEGORY — $PATTERN"
-                    echo "  Severity  : $ISSUE_SEV"
-                    echo "  Location  : $LOC"
-                    echo "  Finding   : $FINDING"
-                    echo "  Remediate : $REMEDIATE"
+                    echo "  Severity    : $ISSUE_SEV (confidence: $CONFIDENCE)"
+                    echo "  Location    : $LOC"
+                    echo "  Finding     : $FINDING"
+                    echo "  Explanation : $EXPLAIN"
+                    echo "  Remediation : $REMEDIATE"
+                    if [[ -n "$SNIPPET" ]]; then
+                      echo "  Snippet     :"
+                      echo "$SNIPPET" | head -5 | sed 's/^/    /'
+                    fi
                     echo ""
                   done < <(echo "$RESULT" | jq -c '.issues[]?' 2>/dev/null)
                   ;;
