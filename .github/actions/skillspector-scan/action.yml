@@ -109,6 +109,23 @@ runs:
               echo "Recommendation : $RECOMMEND"
               echo "Issues         : $ISSUES"
 
+              # Output issues that meet or exceed the severity threshold
+              ISSUE_DETAILS=$(echo "$RESULT" | jq -r \
+                --arg threshold "$INPUTS_SEVERITY_LEVEL" \
+                '["LOW","MEDIUM","HIGH","CRITICAL"] as $order |
+                 .issues |
+                 map(select(($order | index(.severity)) >= ($order | index($threshold)))) |
+                 if length == 0 then "  (no issues at or above threshold)"
+                 else .[] |
+                   "  [" + .id + "] " + .category + " — " + .pattern + "\n" +
+                   "  Severity   : " + .severity + "\n" +
+                   "  File       : " + (.location.file // "N/A") +
+                     (if .location.start_line then ":" + (.location.start_line | tostring) else "" end) + "\n" +
+                   "  Finding    : " + (.finding // "") + "\n" +
+                   "  Remediate  : " + (.remediation // "")
+                 end' 2>/dev/null || echo "  (could not extract issues)")
+              echo "$ISSUE_DETAILS"
+
               # Compare extracted severity against threshold
               case "$INPUTS_SEVERITY_LEVEL:$SKILL_SEV" in
                 LOW:*)                                      echo "true" > "$EXCEEDED_FILE" ;;
