@@ -11,16 +11,18 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch:
     inputs:
-      threshold:
-        description: "Risk score threshold (0-100; fail if exceeded)"
+      severity:
+        description: "Severity level for PR failure (CRITICAL, HIGH, MEDIUM, LOW)"
         required: false
-        default: "50"
-        type: string
+        default: "CRITICAL"
+        type: choice
+        options:
+          - CRITICAL
+          - HIGH
+          - MEDIUM
+          - LOW
 
 permissions: {}
-
-env:
-  SKILL_THRESHOLD: 50
 
 jobs:
   skill-scan:
@@ -35,91 +37,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install SkillSpector
-        run: python -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@a5092dd9b9521ff57a9b53612bb129ce78019002"
-
       - name: Run SkillSpector scan
-        run: |
-          THRESHOLD="${{ inputs.threshold }}"
-          if [[ -z "$THRESHOLD" ]]; then
-            THRESHOLD="${{ env.SKILL_THRESHOLD }}"
-          fi
-          if ! [[ "$THRESHOLD" =~ ^[0-9]+$ ]] || [ "$THRESHOLD" -lt 0 ] || [ "$THRESHOLD" -gt 100 ]; then
-            THRESHOLD="${{ env.SKILL_THRESHOLD }}"
-          fi
-          echo "Using threshold: $THRESHOLD"
-          
-          REPORT="skillspector-report.md"
-          EXIT_CODE=0
-          
-          # Start building report
-          (
-            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-              echo "## 🎉 SkillSpector Security Scan (Changed Skills)"
-            else
-              echo "## 🎉 SkillSpector Security Scan (All Skills)"
-            fi
-            echo ""
-            echo "| Skill | Score | Severity | Issues |"
-            echo "|-------|-------|----------|--------|"
-            
-            # Get skills list
-            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-              SKILLS=$(git diff --name-only origin/${{ github.base_ref || 'main' }} HEAD -- .agents/skills/ | cut -d/ -f1-3 | sort -u)
-            else
-              SKILLS=$(find .agents/skills -mindepth 1 -maxdepth 2 -name SKILL.md -type f | sed 's|/SKILL.md||' | sort)
-            fi
-            
-            if [[ -z "$SKILLS" ]]; then
-              echo "| (no skills to scan) | — | — | — |"
-            else
-              while IFS= read -r skill; do
-                echo "Scanning: $skill" >&2
-                
-                # Run scan
-                if RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1); then
-                  SCORE=$(echo "$RESULT" | jq -r '.risk_assessment.score // 0' 2>/dev/null || echo "0")
-                  SEVERITY=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
-                  ISSUES=$(echo "$RESULT" | jq '.issues | length' 2>/dev/null || echo "0")
-                  SCORE=${SCORE%.*}
-                  
-                  case "$SEVERITY" in
-                    CRITICAL) EMOJI="🔴" ;;
-                    HIGH) EMOJI="🔴" ;;
-                    MEDIUM) EMOJI="🟡" ;;
-                    LOW) EMOJI="🟢" ;;
-                    *) EMOJI="?" ;;
-                  esac
-                  
-                  echo "| $skill | $SCORE/100 | $EMOJI $SEVERITY | $ISSUES |"
-                  
-                  if [[ $SCORE -gt $THRESHOLD ]]; then
-                    EXIT_CODE=1
-                  fi
-                else
-                  ERROR_MSG=$(echo "$RESULT" | head -1 | cut -c1-100)
-                  echo "| $skill | ERROR | ⚠️ | $ERROR_MSG |"
-                  echo "Full error for $skill:" >&2
-                  echo "$RESULT" >&2
-                fi
-              done <<< "$SKILLS"
-            fi
-            
-            echo ""
-            echo "**Threshold:** $THRESHOLD"
-          ) | tee "$REPORT"
-          
-          exit $EXIT_CODE
-
-      - name: Upload report
-        if: always()
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/skillspector-scan
         with:
-          name: skillspector-reports
-          path: skillspector-report.md
-          if-no-files-found: warn
+          severity-level: ${{ inputs.severity || 'CRITICAL' }}
