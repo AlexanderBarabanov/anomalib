@@ -109,47 +109,32 @@ runs:
               echo "Recommendation : $RECOMMEND"
               echo "Issues         : $ISSUES"
 
-              # Output issues that meet or exceed the severity threshold
-              ISSUE_COUNT=0
-              while IFS= read -r issue; do
-                ISSUE_SEV=$(echo "$issue"  | jq -r '.severity   // "LOW"' 2>/dev/null)
-                ISSUE_ID=$(echo "$issue"   | jq -r '.id         // "?"'   2>/dev/null)
-                CATEGORY=$(echo "$issue"   | jq -r '.category   // ""'    2>/dev/null)
-                PATTERN=$(echo "$issue"    | jq -r '.pattern    // ""'    2>/dev/null)
-                FINDING=$(echo "$issue"    | jq -r '.finding    // ""'    2>/dev/null)
-                REMEDIATE=$(echo "$issue"  | jq -r '.remediation // ""'   2>/dev/null)
-                FILE=$(echo "$issue"       | jq -r '.location.file       // "N/A"' 2>/dev/null)
-                LINE=$(echo "$issue"       | jq -r '.location.start_line // ""'    2>/dev/null)
-
-                # Filter by threshold
-                case "$INPUTS_SEVERITY_LEVEL:$ISSUE_SEV" in
-                  LOW:*) ;;
-                  MEDIUM:LOW) continue ;;
-                  HIGH:LOW|HIGH:MEDIUM) continue ;;
-                  CRITICAL:LOW|CRITICAL:MEDIUM|CRITICAL:HIGH) continue ;;
-                esac
-
-                ISSUE_COUNT=$((ISSUE_COUNT + 1))
-                LOC="$FILE"
-                [[ -n "$LINE" ]] && LOC="$LOC:$LINE"
-                echo "  [$ISSUE_ID] $CATEGORY — $PATTERN"
-                echo "  Severity  : $ISSUE_SEV"
-                echo "  Location  : $LOC"
-                echo "  Finding   : $FINDING"
-                echo "  Remediate : $REMEDIATE"
-                echo ""
-              done < <(echo "$RESULT" | jq -c '.issues[]?' 2>/dev/null)
-
-              if [[ $ISSUE_COUNT -eq 0 ]]; then
-                echo "  (no issues at or above threshold $INPUTS_SEVERITY_LEVEL)"
-              fi
-
-              # Compare extracted severity against threshold
+              # If overall skill severity meets threshold, output all issues
               case "$INPUTS_SEVERITY_LEVEL:$SKILL_SEV" in
-                LOW:*)                                      echo "true" > "$EXCEEDED_FILE" ;;
-                MEDIUM:MEDIUM|MEDIUM:HIGH|MEDIUM:CRITICAL)  echo "true" > "$EXCEEDED_FILE" ;;
-                HIGH:HIGH|HIGH:CRITICAL)                    echo "true" > "$EXCEEDED_FILE" ;;
-                CRITICAL:CRITICAL)                          echo "true" > "$EXCEEDED_FILE" ;;
+                LOW:*|\
+                MEDIUM:MEDIUM|MEDIUM:HIGH|MEDIUM:CRITICAL|\
+                HIGH:HIGH|HIGH:CRITICAL|\
+                CRITICAL:CRITICAL)
+                  echo "true" > "$EXCEEDED_FILE"
+                  while IFS= read -r issue; do
+                    ISSUE_SEV=$(echo "$issue"  | jq -r '.severity    // "LOW"' 2>/dev/null)
+                    ISSUE_ID=$(echo "$issue"   | jq -r '.id          // "?"'   2>/dev/null)
+                    CATEGORY=$(echo "$issue"   | jq -r '.category    // ""'    2>/dev/null)
+                    PATTERN=$(echo "$issue"    | jq -r '.pattern     // ""'    2>/dev/null)
+                    FINDING=$(echo "$issue"    | jq -r '.finding     // ""'    2>/dev/null)
+                    REMEDIATE=$(echo "$issue"  | jq -r '.remediation // ""'    2>/dev/null)
+                    FILE=$(echo "$issue"       | jq -r '.location.file       // "N/A"' 2>/dev/null)
+                    LINE=$(echo "$issue"       | jq -r '.location.start_line // ""'    2>/dev/null)
+                    LOC="$FILE"
+                    [[ -n "$LINE" ]] && LOC="$LOC:$LINE"
+                    echo "  [$ISSUE_ID] $CATEGORY — $PATTERN"
+                    echo "  Severity  : $ISSUE_SEV"
+                    echo "  Location  : $LOC"
+                    echo "  Finding   : $FINDING"
+                    echo "  Remediate : $REMEDIATE"
+                    echo ""
+                  done < <(echo "$RESULT" | jq -c '.issues[]?' 2>/dev/null)
+                  ;;
               esac
             done <<< "$SKILLS"
           fi
