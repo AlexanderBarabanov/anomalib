@@ -110,21 +110,39 @@ runs:
               echo "Issues         : $ISSUES"
 
               # Output issues that meet or exceed the severity threshold
-              ISSUE_DETAILS=$(echo "$RESULT" | jq -r \
-                --arg threshold "$INPUTS_SEVERITY_LEVEL" \
-                '["LOW","MEDIUM","HIGH","CRITICAL"] as $order |
-                 .issues |
-                 map(select(($order | index(.severity)) >= ($order | index($threshold)))) |
-                 if length == 0 then "  (no issues at or above threshold)"
-                 else .[] |
-                   "  [" + .id + "] " + .category + " — " + .pattern + "\n" +
-                   "  Severity   : " + .severity + "\n" +
-                   "  File       : " + (.location.file // "N/A") +
-                     (if .location.start_line then ":" + (.location.start_line | tostring) else "" end) + "\n" +
-                   "  Finding    : " + (.finding // "") + "\n" +
-                   "  Remediate  : " + (.remediation // "")
-                 end' 2>/dev/null || echo "  (could not extract issues)")
-              echo "$ISSUE_DETAILS"
+              ISSUE_COUNT=0
+              while IFS= read -r issue; do
+                ISSUE_SEV=$(echo "$issue"  | jq -r '.severity   // "LOW"' 2>/dev/null)
+                ISSUE_ID=$(echo "$issue"   | jq -r '.id         // "?"'   2>/dev/null)
+                CATEGORY=$(echo "$issue"   | jq -r '.category   // ""'    2>/dev/null)
+                PATTERN=$(echo "$issue"    | jq -r '.pattern    // ""'    2>/dev/null)
+                FINDING=$(echo "$issue"    | jq -r '.finding    // ""'    2>/dev/null)
+                REMEDIATE=$(echo "$issue"  | jq -r '.remediation // ""'   2>/dev/null)
+                FILE=$(echo "$issue"       | jq -r '.location.file       // "N/A"' 2>/dev/null)
+                LINE=$(echo "$issue"       | jq -r '.location.start_line // ""'    2>/dev/null)
+
+                # Filter by threshold
+                case "$INPUTS_SEVERITY_LEVEL:$ISSUE_SEV" in
+                  LOW:*) ;;
+                  MEDIUM:LOW) continue ;;
+                  HIGH:LOW|HIGH:MEDIUM) continue ;;
+                  CRITICAL:LOW|CRITICAL:MEDIUM|CRITICAL:HIGH) continue ;;
+                esac
+
+                ISSUE_COUNT=$((ISSUE_COUNT + 1))
+                LOC="$FILE"
+                [[ -n "$LINE" ]] && LOC="$LOC:$LINE"
+                echo "  [$ISSUE_ID] $CATEGORY — $PATTERN"
+                echo "  Severity  : $ISSUE_SEV"
+                echo "  Location  : $LOC"
+                echo "  Finding   : $FINDING"
+                echo "  Remediate : $REMEDIATE"
+                echo ""
+              done < <(echo "$RESULT" | jq -c '.issues[]?' 2>/dev/null)
+
+              if [[ $ISSUE_COUNT -eq 0 ]]; then
+                echo "  (no issues at or above threshold $INPUTS_SEVERITY_LEVEL)"
+              fi
 
               # Compare extracted severity against threshold
               case "$INPUTS_SEVERITY_LEVEL:$SKILL_SEV" in
