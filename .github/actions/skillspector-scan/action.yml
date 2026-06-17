@@ -1,5 +1,5 @@
-name: "SkillSpector Security Scan"
-description: "Scan anomalib skill components for security vulnerabilities using SkillSpector"
+name: "Skill Security Scan"
+description: "Scan skills using SkillSpector"
 
 inputs:
   severity-level:
