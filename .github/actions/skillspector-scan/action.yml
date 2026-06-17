@@ -200,13 +200,11 @@ runs:
           exit 0
         fi
 
+        BODY=":x: **SkillSpector Security Scan Failed**"$'\n\n'"One or more skills exceeded the severity threshold (**${INPUTS_SEVERITY_LEVEL}**)."$'\n\n'"[View workflow run](${RUN_URL}) — download artifact \`skillspector-reports\` for the full report."
+
         gh pr comment "$PR_NUMBER" \
           --repo "${{ github.repository }}" \
-          --body ":x: **SkillSpector Security Scan Failed**
-
-One or more skills exceeded the severity threshold (**${INPUTS_SEVERITY_LEVEL}**).
-
-[View workflow run](${RUN_URL}) — download artifact \`skillspector-reports\` for the full report." \
+          --body "$BODY" \
           || echo "Warning: could not post PR comment" >&2
 
     - name: Complete with exit code
