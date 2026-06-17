@@ -60,7 +60,7 @@ runs:
         echo "Scan scope  : $([ "$IS_PR" == "true" ] && echo "changed" || echo "all")"
         echo "Severity    : $INPUTS_SEVERITY_LEVEL"
         echo "Is PR       : $IS_PR"
-        echo "Fail on PR  : $INPUTS_FAIL_ON_FINDINGS"
+        echo "Fail on findings: $INPUTS_FAIL_ON_FINDINGS"
 
         # Discover skills — changed only for PRs, all otherwise
         if [[ "$IS_PR" == "true" ]]; then
@@ -71,16 +71,15 @@ runs:
 
         (
           if [[ "$IS_PR" == "true" ]]; then
-            echo "## SkillSpector Security Scan (Changed Skills)"
+            echo "# SkillSpector Security Scan (Changed Skills)"
           else
-            echo "## SkillSpector Security Scan (All Skills)"
+            echo "# SkillSpector Security Scan (All Skills)"
           fi
+          echo "Severity threshold: $INPUTS_SEVERITY_LEVEL"
           echo ""
-          echo "| Skill | Score | Severity | Issues |"
-          echo "|-------|-------|----------|--------|"
 
           if [[ -z "$SKILLS" ]]; then
-            echo "| (no skills to scan) | — | — | — |"
+            echo "No skills to scan."
           else
             while IFS= read -r skill; do
               echo "Scanning: $skill" >&2
@@ -90,18 +89,25 @@ runs:
 
               # Validate we got parseable JSON
               if ! echo "$RESULT" | jq -e . > /dev/null 2>&1; then
-                echo "| $skill | ERROR | — | failed to parse output |"
-                echo "Raw output for $skill:" >&2
+                echo "---"
+                echo "Skill   : $skill"
+                echo "Status  : ERROR (failed to parse output)"
                 echo "$RESULT" >&2
                 continue
               fi
 
-              SCORE=$(echo "$RESULT"     | jq -r '.risk_assessment.score    // 0'     2>/dev/null || echo "0")
-              SKILL_SEV=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
-              ISSUES=$(echo "$RESULT"    | jq    '.issues | length'                   2>/dev/null || echo "0")
+              SCORE=$(echo "$RESULT"     | jq -r '.risk_assessment.score         // 0'    2>/dev/null || echo "0")
+              SKILL_SEV=$(echo "$RESULT" | jq -r '.risk_assessment.severity      // "LOW"' 2>/dev/null || echo "LOW")
+              RECOMMEND=$(echo "$RESULT" | jq -r '.risk_assessment.recommendation // ""'   2>/dev/null || echo "")
+              ISSUES=$(echo "$RESULT"    | jq    '.issues | length'                        2>/dev/null || echo "0")
               SCORE=${SCORE%.*}
 
-              echo "| $skill | $SCORE/100 | $SKILL_SEV | $ISSUES |"
+              echo "---"
+              echo "Skill          : $skill"
+              echo "Score          : $SCORE/100"
+              echo "Severity       : $SKILL_SEV"
+              echo "Recommendation : $RECOMMEND"
+              echo "Issues         : $ISSUES"
 
               # Compare extracted severity against threshold
               case "$INPUTS_SEVERITY_LEVEL:$SKILL_SEV" in
@@ -112,9 +118,7 @@ runs:
               esac
             done <<< "$SKILLS"
           fi
-
-          echo ""
-          echo "**Severity threshold:** \`$INPUTS_SEVERITY_LEVEL\` (fails PRs only)"
+          echo "---"
         ) | tee "$REPORT"
 
         EXCEEDED=$(cat "$EXCEEDED_FILE")
@@ -122,8 +126,8 @@ runs:
 
         echo "report_path=$REPORT" >> $GITHUB_OUTPUT
 
-        # Determine exit code: only fail on PRs when fail-on-findings is true
-        if [[ "$EXCEEDED" == "true" && "$IS_PR" == "true" && "$INPUTS_FAIL_ON_FINDINGS" == "true" ]]; then
+        # Determine exit code based solely on fail-on-findings
+        if [[ "$EXCEEDED" == "true" && "$INPUTS_FAIL_ON_FINDINGS" == "true" ]]; then
           echo "exit_code=1" >> $GITHUB_OUTPUT
         else
           echo "exit_code=0" >> $GITHUB_OUTPUT
