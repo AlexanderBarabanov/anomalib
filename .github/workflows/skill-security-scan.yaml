@@ -31,6 +31,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -42,3 +43,4 @@ jobs:
         with:
           severity-level: ${{ github.event_name == 'pull_request' && (inputs.severity || 'CRITICAL') || 'LOW' }}
           fail-on-findings: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

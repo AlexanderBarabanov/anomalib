@@ -7,9 +7,13 @@ inputs:
     required: false
     default: "CRITICAL"
   fail-on-findings:
-    description: "Whether to fail the action if issues at or above severity-level are found (PRs only)"
+    description: "Whether to fail the action if issues at or above severity-level are found"
     required: false
     default: "true"
+  github-token:
+    description: "GitHub token used to post PR comments. Requires pull-requests: write."
+    required: false
+    default: ""
   skills-path:
     description: "Repo-relative path to the skills root directory"
     required: false
@@ -181,6 +185,29 @@ runs:
         path: skillspector-report.md
         retention-days: 7
         if-no-files-found: warn
+
+    - name: Post PR comment on failure
+      if: always() && steps.run-skillspector.outputs.exit_code == '1'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        IS_PR: ${{ github.event_name == 'pull_request' }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        INPUTS_SEVERITY_LEVEL: ${{ inputs.severity-level }}
+      run: |
+        if [[ "$IS_PR" != "true" || -z "$GH_TOKEN" || -z "$PR_NUMBER" ]]; then
+          exit 0
+        fi
+
+        gh pr comment "$PR_NUMBER" \
+          --repo "${{ github.repository }}" \
+          --body ":x: **SkillSpector Security Scan Failed**
+
+One or more skills exceeded the severity threshold (**${INPUTS_SEVERITY_LEVEL}**).
+
+[View workflow run](${RUN_URL}) — download artifact \`skillspector-reports\` for the full report." \
+          || echo "Warning: could not post PR comment" >&2
 
     - name: Complete with exit code
       if: always()
