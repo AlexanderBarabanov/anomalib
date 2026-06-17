@@ -58,56 +58,59 @@ jobs:
           REPORT="skillspector-report.md"
           EXIT_CODE=0
           
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # Scan only changed skills
-            SKILLS=$(git diff --name-only origin/${{ github.base_ref || 'main' }} HEAD -- .agents/skills/ | cut -d/ -f1-3 | sort -u)
-            if [[ -z "$SKILLS" ]]; then
-              echo "No skill changes detected" | tee $REPORT
-              exit 0
-            fi
-            echo "## 🎉 SkillSpector Security Scan (Changed Skills)" > $REPORT
-          else
-            # Scan all skills
-            echo "## 🎉 SkillSpector Security Scan (All Skills)" > $REPORT
-            SKILLS=$(find .agents/skills -mindepth 1 -maxdepth 2 -type d -exec test -f {}/SKILL.md \; -print | sort)
-          fi
-          
-          echo "" >> $REPORT
-          echo "| Skill | Score | Severity | Issues |" >> $REPORT
-          echo "|-------|-------|----------|--------|" >> $REPORT
-          
-          for skill in $SKILLS; do
-            [[ ! -f "$skill/SKILL.md" ]] && continue
-            
-            RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1)
-            if [[ $? -ne 0 ]]; then
-              echo "| $skill | ERROR | — | — |" >> $REPORT
-              continue
+          # Initialize report
+          {
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              # Scan only changed skills
+              SKILLS=$(git diff --name-only origin/${{ github.base_ref || 'main' }} HEAD -- .agents/skills/ | cut -d/ -f1-3 | sort -u)
+              if [[ -z "$SKILLS" ]]; then
+                echo "No skill changes detected"
+                exit 0
+              fi
+              echo "## 🎉 SkillSpector Security Scan (Changed Skills)"
+            else
+              # Scan all skills
+              echo "## 🎉 SkillSpector Security Scan (All Skills)"
+              SKILLS=$(find .agents/skills -mindepth 1 -maxdepth 2 -type d -exec test -f {}/SKILL.md \; -print | sort)
             fi
             
-            SCORE=$(echo "$RESULT" | jq -r '.risk_assessment.score // 0' 2>/dev/null || echo "0")
-            SEVERITY=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
-            ISSUES=$(echo "$RESULT" | jq '.issues | length' 2>/dev/null || echo "0")
-            SCORE=${SCORE%.*}
+            echo ""
+            echo "| Skill | Score | Severity | Issues |"
+            echo "|-------|-------|----------|--------|"
             
-            case "$SEVERITY" in
-              CRITICAL) EMOJI="🔴" ;;
-              HIGH) EMOJI="🔴" ;;
-              MEDIUM) EMOJI="🟡" ;;
-              LOW) EMOJI="🟢" ;;
-              *) EMOJI="?" ;;
-            esac
+            for skill in $SKILLS; do
+              [[ ! -f "$skill/SKILL.md" ]] && continue
+              
+              RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1)
+              if [[ $? -ne 0 ]]; then
+                echo "| $skill | ERROR | — | — |"
+                continue
+              fi
+              
+              SCORE=$(echo "$RESULT" | jq -r '.risk_assessment.score // 0' 2>/dev/null || echo "0")
+              SEVERITY=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
+              ISSUES=$(echo "$RESULT" | jq '.issues | length' 2>/dev/null || echo "0")
+              SCORE=${SCORE%.*}
+              
+              case "$SEVERITY" in
+                CRITICAL) EMOJI="🔴" ;;
+                HIGH) EMOJI="🔴" ;;
+                MEDIUM) EMOJI="🟡" ;;
+                LOW) EMOJI="🟢" ;;
+                *) EMOJI="?" ;;
+              esac
+              
+              echo "| $skill | $SCORE/100 | $EMOJI $SEVERITY | $ISSUES |"
+              
+              if [[ $SCORE -gt $THRESHOLD ]]; then
+                EXIT_CODE=1
+              fi
+            done
             
-            echo "| $skill | $SCORE/100 | $EMOJI $SEVERITY | $ISSUES |" >> $REPORT
-            
-            if [[ $SCORE -gt $THRESHOLD ]]; then
-              EXIT_CODE=1
-            fi
-          done
+            echo ""
+            echo "**Threshold:** $THRESHOLD"
+          } | tee $REPORT
           
-          echo "" >> $REPORT
-          echo "Threshold: $THRESHOLD" >> $REPORT
-          cat $REPORT
           exit $EXIT_CODE
 
       - name: Upload report
