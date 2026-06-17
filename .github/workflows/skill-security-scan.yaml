@@ -58,31 +58,44 @@ jobs:
           REPORT="skillspector-report.md"
           EXIT_CODE=0
           
-          # Initialize report
+          # Discover skills
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "PR detected - scanning changed skills only"
+            SKILLS=$(git diff --name-only origin/${{ github.base_ref || 'main' }} HEAD -- .agents/skills/ | cut -d/ -f1-3 | sort -u)
+          else
+            echo "Non-PR event - scanning all skills"
+            SKILLS=$(find .agents/skills -mindepth 1 -maxdepth 2 -type d -exec test -f {}/SKILL.md \; -print | sort)
+          fi
+          
+          echo "Found skills: $SKILLS"
+          
+          if [[ -z "$SKILLS" ]]; then
+            echo "No skills to scan" | tee "$REPORT"
+            exit 0
+          fi
+          
+          # Build report
           {
             if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-              # Scan only changed skills
-              SKILLS=$(git diff --name-only origin/${{ github.base_ref || 'main' }} HEAD -- .agents/skills/ | cut -d/ -f1-3 | sort -u)
-              if [[ -z "$SKILLS" ]]; then
-                echo "No skill changes detected"
-                exit 0
-              fi
               echo "## 🎉 SkillSpector Security Scan (Changed Skills)"
             else
-              # Scan all skills
               echo "## 🎉 SkillSpector Security Scan (All Skills)"
-              SKILLS=$(find .agents/skills -mindepth 1 -maxdepth 2 -type d -exec test -f {}/SKILL.md \; -print | sort)
             fi
-            
             echo ""
             echo "| Skill | Score | Severity | Issues |"
             echo "|-------|-------|----------|--------|"
             
             for skill in $SKILLS; do
-              [[ ! -f "$skill/SKILL.md" ]] && continue
+              if [[ ! -f "$skill/SKILL.md" ]]; then
+                echo "Skipping $skill - no SKILL.md found"
+                continue
+              fi
               
+              echo "Scanning: $skill" >&2
               RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1)
-              if [[ $? -ne 0 ]]; then
+              SCAN_EXIT=$?
+              
+              if [[ $SCAN_EXIT -ne 0 ]]; then
                 echo "| $skill | ERROR | — | — |"
                 continue
               fi
@@ -109,7 +122,7 @@ jobs:
             
             echo ""
             echo "**Threshold:** $THRESHOLD"
-          } | tee $REPORT
+          } | tee "$REPORT"
           
           exit $EXIT_CODE
 
