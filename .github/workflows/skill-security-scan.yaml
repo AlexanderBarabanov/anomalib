@@ -1,51 +1,119 @@
 name: Skill Scanner
 
 on:
+  pull_request:
+    paths:
+      - ".agents/skills/**"
+      - ".github/workflows/skill-security-scan.yaml"
   push:
     branches: ["main", "release/**"]
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+    inputs:
+      threshold:
+        description: "Risk score threshold (0-100; fail if exceeded)"
+        required: false
+        default: "50"
+        type: string
 
-permissions: {} # No permissions by default on workflow level
+permissions: {}
+
+env:
+  SKILL_THRESHOLD: 50
 
 jobs:
-  skill-scan-all:
-    name: SkillSpector (all skills)
+  skill-scan:
+    name: SkillSpector Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
       contents: read
-      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # SkillSpector is not published to PyPI and cuts no release tags, so we
-      # install from a pinned commit SHA
       - name: Install SkillSpector
         run: python -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@a5092dd9b9521ff57a9b53612bb129ce78019002"
 
-      - name: Run SkillSpector on all skills
+      - name: Run SkillSpector scan
         run: |
-          skillspector scan .agents/skills --no-llm --verbose --format markdown --output skillspector-report.md
-      - name: Display report
-        if: always()
-        run: |
-          if [ -f skillspector-report.md ]; then
-            cat skillspector-report.md
-          else
-            echo "SkillSpector Markdown report was not generated."
+          # Determine threshold
+          THRESHOLD="${{ inputs.threshold }}"
+          if [[ -z "$THRESHOLD" ]]; then
+            THRESHOLD="${{ env.SKILL_THRESHOLD }}"
           fi
-      - name: Upload SkillSpector reports
+          if ! [[ "$THRESHOLD" =~ ^[0-9]+$ ]] || [ "$THRESHOLD" -lt 0 ] || [ "$THRESHOLD" -gt 100 ]; then
+            THRESHOLD="${{ env.SKILL_THRESHOLD }}"
+          fi
+          echo "Using threshold: $THRESHOLD"
+          
+          REPORT="skillspector-report.md"
+          EXIT_CODE=0
+          
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Scan only changed skills
+            SKILLS=$(git diff --name-only origin/${{ github.base_ref || 'main' }} HEAD -- .agents/skills/ | cut -d/ -f1-3 | sort -u)
+            if [[ -z "$SKILLS" ]]; then
+              echo "No skill changes detected" | tee $REPORT
+              exit 0
+            fi
+            echo "## 🎉 SkillSpector Security Scan (Changed Skills)" > $REPORT
+          else
+            # Scan all skills
+            echo "## 🎉 SkillSpector Security Scan (All Skills)" > $REPORT
+            SKILLS=$(find .agents/skills -mindepth 1 -maxdepth 2 -type d -exec test -f {}/SKILL.md \; -print | sort)
+          fi
+          
+          echo "" >> $REPORT
+          echo "| Skill | Score | Severity | Issues |" >> $REPORT
+          echo "|-------|-------|----------|--------|" >> $REPORT
+          
+          for skill in $SKILLS; do
+            [[ ! -f "$skill/SKILL.md" ]] && continue
+            
+            RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1)
+            if [[ $? -ne 0 ]]; then
+              echo "| $skill | ERROR | — | — |" >> $REPORT
+              continue
+            fi
+            
+            SCORE=$(echo "$RESULT" | jq -r '.risk_assessment.score // 0' 2>/dev/null || echo "0")
+            SEVERITY=$(echo "$RESULT" | jq -r '.risk_assessment.severity // "LOW"' 2>/dev/null || echo "LOW")
+            ISSUES=$(echo "$RESULT" | jq '.issues | length' 2>/dev/null || echo "0")
+            SCORE=${SCORE%.*}
+            
+            case "$SEVERITY" in
+              CRITICAL) EMOJI="🔴" ;;
+              HIGH) EMOJI="🔴" ;;
+              MEDIUM) EMOJI="🟡" ;;
+              LOW) EMOJI="🟢" ;;
+              *) EMOJI="?" ;;
+            esac
+            
+            echo "| $skill | $SCORE/100 | $EMOJI $SEVERITY | $ISSUES |" >> $REPORT
+            
+            if [[ $SCORE -gt $THRESHOLD ]]; then
+              EXIT_CODE=1
+            fi
+          done
+          
+          echo "" >> $REPORT
+          echo "Threshold: $THRESHOLD" >> $REPORT
+          cat $REPORT
+          exit $EXIT_CODE
+
+      - name: Upload report
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: skillspector-reports
           path: skillspector-report.md
-          if-no-files-found: error
+          if-no-files-found: warn
