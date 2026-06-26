@@ -22,7 +22,7 @@ inputs:
   version:
     description: "SkillSpector pinned commit SHA to install"
     required: false
-    default: "ab0431ff2a9e9d75ba866f986be17f8600cfd086"
+    default: "a5092dd9b9521ff57a9b53612bb129ce78019002"
 
 outputs:
   exit_code:
