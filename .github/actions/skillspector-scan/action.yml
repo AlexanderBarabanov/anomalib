@@ -187,7 +187,7 @@ runs:
         if [[ "$IS_PR" != "true" || -z "$GH_TOKEN" || -z "$PR_NUMBER" ]]; then
           exit 0
         fi
-        BODY=":x: **SkillSpector scan failed**"$'\n\n'"One or more skills exceeded the severity threshold (**${INPUTS_SEVERITY_LEVEL}**)."$'\n\n'"[View workflow run](${RUN_URL}) — download artifact \`skillspector-reports\` for the full report."
+        BODY=":x: **SkillSpector scan failed**"$'\n\n'"One or more skills exceeded the severity threshold (**${INPUTS_SEVERITY_LEVEL}**)."$'\n\n'"[View workflow run](${RUN_URL})."
         gh pr comment "$PR_NUMBER" \
           --repo "${{ github.repository }}" \
           --body "$BODY" \
