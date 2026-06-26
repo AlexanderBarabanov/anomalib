@@ -22,7 +22,7 @@ inputs:
   version:
     description: "SkillSpector pinned commit SHA to install"
     required: false
-    default: "a5092dd9b9521ff57a9b53612bb129ce78019002"
+    default: "ab0431ff2a9e9d75ba866f986be17f8600cfd086"
 
 outputs:
   exit_code:
@@ -58,14 +58,15 @@ runs:
       run: |
         set +e
         REPORT="skillspector-report.md"
-        EXCEEDED_FILE=$(mktemp)
-        echo "false" > "$EXCEEDED_FILE"
-
+        EXCEEDED=false
+        case "$INPUTS_SEVERITY_LEVEL" in
+          LOW|MEDIUM|HIGH|CRITICAL) ;;
+          *) echo "ERROR: Invalid severity-level '${INPUTS_SEVERITY_LEVEL}'. Must be LOW, MEDIUM, HIGH, or CRITICAL." >&2; exit 1 ;;
+        esac
         echo "Scan scope  : $([ "$IS_PR" == "true" ] && echo "changed" || echo "all")"
         echo "Severity    : $INPUTS_SEVERITY_LEVEL"
         echo "Is PR       : $IS_PR"
         echo "Fail on findings: $INPUTS_FAIL_ON_FINDINGS"
-
         # Discover skills — changed only for PRs, all otherwise
         if [[ "$IS_PR" == "true" ]]; then
           # Get changed paths, extract candidate dirs, then verify each contains SKILL.md
@@ -78,8 +79,7 @@ runs:
         else
           SKILLS=$(find "${INPUTS_SKILLS_PATH}" -mindepth 1 -maxdepth 2 -name SKILL.md -type f | sed "s|/SKILL.md||" | sort)
         fi
-
-        (
+        {
           if [[ "$IS_PR" == "true" ]]; then
             echo "# SkillSpector Security Scan (Changed Skills)"
           else
@@ -87,7 +87,6 @@ runs:
           fi
           echo "Severity threshold: $INPUTS_SEVERITY_LEVEL"
           echo ""
-
           if [[ -z "$SKILLS" ]]; then
             echo "No skills to scan."
           else
@@ -97,12 +96,9 @@ runs:
                 echo "Skipping $skill — no SKILL.md found" >&2
                 continue
               fi
-
               echo "Scanning: $skill" >&2
-
               # Always capture output; ignore skillspector's own exit code
-              RESULT=$(skillspector scan "$skill" --no-llm --format json 2>&1) || true
-
+              RESULT=$(skillspector scan "$skill" --no-llm --format json 2>/dev/stderr)
               # Validate we got parseable JSON
               if ! echo "$RESULT" | jq -e . > /dev/null 2>&1; then
                 echo "---"
@@ -111,27 +107,24 @@ runs:
                 echo "$RESULT" >&2
                 continue
               fi
-
               SCORE=$(echo "$RESULT"     | jq -r '.risk_assessment.score         // 0'    2>/dev/null || echo "0")
               SKILL_SEV=$(echo "$RESULT" | jq -r '.risk_assessment.severity      // "LOW"' 2>/dev/null || echo "LOW")
               RECOMMEND=$(echo "$RESULT" | jq -r '.risk_assessment.recommendation // ""'   2>/dev/null || echo "")
               ISSUES=$(echo "$RESULT"    | jq    '.issues | length'                        2>/dev/null || echo "0")
               SCORE=${SCORE%.*}
-
               echo "---"
               echo "Skill          : $skill"
               echo "Score          : $SCORE/100"
               echo "Severity       : $SKILL_SEV"
               echo "Recommendation : $RECOMMEND"
               echo "Issues         : $ISSUES"
-
               # If overall skill severity meets threshold, output all issues
               case "$INPUTS_SEVERITY_LEVEL:$SKILL_SEV" in
                 LOW:*|\
                 MEDIUM:MEDIUM|MEDIUM:HIGH|MEDIUM:CRITICAL|\
                 HIGH:HIGH|HIGH:CRITICAL|\
                 CRITICAL:CRITICAL)
-                  echo "true" > "$EXCEEDED_FILE"
+                  EXCEEDED=true
                   while IFS= read -r issue; do
                     ISSUE_SEV=$(echo "$issue"   | jq -r '.severity      // "LOW"' 2>/dev/null)
                     ISSUE_ID=$(echo "$issue"    | jq -r '.id            // "?"'   2>/dev/null)
@@ -163,22 +156,17 @@ runs:
             done <<< "$SKILLS"
           fi
           echo "---"
-        ) | tee "$REPORT"
-
-        EXCEEDED=$(cat "$EXCEEDED_FILE")
-        rm -f "$EXCEEDED_FILE"
-
+        } > "$REPORT"
+        cat "$REPORT"
         echo "report_path=$REPORT" >> $GITHUB_OUTPUT
-
         # Determine exit code based solely on fail-on-findings
         if [[ "$EXCEEDED" == "true" && "$INPUTS_FAIL_ON_FINDINGS" == "true" ]]; then
           echo "exit_code=1" >> $GITHUB_OUTPUT
         else
           echo "exit_code=0" >> $GITHUB_OUTPUT
         fi
-
     - name: Upload report
-      if: always() && hashFiles('skillspector-report.md') != ''
+      if: always() && steps.run-skillspector.outputs.report_path != ''
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: skillspector-reports
@@ -199,14 +187,11 @@ runs:
         if [[ "$IS_PR" != "true" || -z "$GH_TOKEN" || -z "$PR_NUMBER" ]]; then
           exit 0
         fi
-
-        BODY=":x: **SkillSpector Security Scan Failed**"$'\n\n'"One or more skills exceeded the severity threshold (**${INPUTS_SEVERITY_LEVEL}**)."$'\n\n'"[View workflow run](${RUN_URL}) — download artifact \`skillspector-reports\` for the full report."
-
+        BODY=":x: **SkillSpector scan failed**"$'\n\n'"One or more skills exceeded the severity threshold (**${INPUTS_SEVERITY_LEVEL}**)."$'\n\n'"[View workflow run](${RUN_URL}) — download artifact \`skillspector-reports\` for the full report."
         gh pr comment "$PR_NUMBER" \
           --repo "${{ github.repository }}" \
           --body "$BODY" \
           || echo "Warning: could not post PR comment" >&2
-
     - name: Complete with exit code
       if: always()
       shell: bash
